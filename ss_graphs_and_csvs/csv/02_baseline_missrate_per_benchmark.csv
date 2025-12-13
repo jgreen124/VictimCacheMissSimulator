@@ -1,0 +1,5 @@
+benchmark,mode,value
+test-fmath,baseline,0.1086
+test-llong,baseline,0.0628
+test-lswlr,baseline,0.112
+test-math,baseline,0.134

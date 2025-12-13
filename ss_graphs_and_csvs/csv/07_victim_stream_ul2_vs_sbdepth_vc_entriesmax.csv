@@ -1,0 +1,17 @@
+benchmark,x,y
+test-fmath,2.0,1546.0
+test-fmath,4.0,1816.0
+test-fmath,8.0,2364.0
+test-fmath,16.0,3452.0
+test-llong,2.0,1063.0
+test-llong,4.0,1207.0
+test-llong,8.0,1511.0
+test-llong,16.0,2095.0
+test-lswlr,2.0,965.0
+test-lswlr,4.0,1085.0
+test-lswlr,8.0,1333.0
+test-lswlr,16.0,1821.0
+test-math,2.0,2303.0
+test-math,4.0,2831.0
+test-math,8.0,3883.0
+test-math,16.0,5979.0
