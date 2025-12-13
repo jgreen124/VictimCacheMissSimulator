@@ -1,0 +1,6 @@
+# One trace per line, comments allowed
+# Trace needs to be in traces directory
+
+600.perlbench_s-210B.champsimtrace.xz
+602.gcc_s-216B.champsimtrace.xz
+429.mcf-184B.champsimtrace.xz

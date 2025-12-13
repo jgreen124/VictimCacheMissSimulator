@@ -1,0 +1,3 @@
+trace,l1i_miss_rate,l1d_miss_rate,llc_miss_rate,instructions,cycles,warmup_ins,sim_ins
+600.perlbench_s-210B,,,,,,1000000,10000000
+429.mcf-184B,,,,,,1000000,10000000

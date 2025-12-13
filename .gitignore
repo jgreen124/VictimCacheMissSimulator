@@ -1,0 +1,5 @@
+/FinalProject/ChampSim
+/FinalProject/simplesim-3.0/*
+!/FinalProject/simplesim-3.0/sim-cache.c
+/FinalProject/.pythonvenv
+

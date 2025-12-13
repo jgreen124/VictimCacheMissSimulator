@@ -1,0 +1,9 @@
+benchmark,mode,il1_miss_rate,dl1_miss_rate,ul2_miss_rate,sim_num_insn,sim_elapsed_time,sim_CPI,vc_lookups,vc_hits,mc_lookups,mc_hits,sb_lookups,sb_hits,sb_prefetches,ul2_d_accesses,ul2_i_accesses
+test-fmath,miss_stream,0.0110,0.0468,1.0000,53949,1,,0,0,782,128,654,396,3870,4703,592
+test-llong,miss_stream,0.0101,0.0518,1.0000,30132,1,,0,0,545,41,504,383,1815,2365,305
+test-lswlr,miss_stream,0.0270,0.1016,1.0000,9367,1,,0,0,486,14,472,377,1425,1918,253
+test-math,miss_stream,0.0042,0.0353,1.0000,214193,1,,0,0,2032,321,1711,477,18510,21071,907
+test-fmath,miss_stream,0.0110,0.0468,1.0000,53949,1,,0,0,782,128,654,396,3870,4703,592
+test-llong,miss_stream,0.0101,0.0518,1.0000,30132,1,,0,0,545,41,504,383,1815,2365,305
+test-lswlr,miss_stream,0.0270,0.1016,1.0000,9367,1,,0,0,486,14,472,377,1425,1918,253
+test-math,miss_stream,0.0042,0.0353,1.0000,214193,1,,0,0,2032,321,1711,477,18510,21071,907
