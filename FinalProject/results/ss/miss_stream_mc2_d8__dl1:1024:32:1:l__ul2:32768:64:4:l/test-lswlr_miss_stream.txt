@@ -5,9 +5,9 @@ non-commercial use.  No portion of this work may be used by any commercial
 entity, or for any commercial purpose, without the prior written permission
 of SimpleScalar, LLC (info@simplescalar.com).
 
-sim: command line: /home/joshg/Documents/Rutgers/classes/comp-arch-1/Project/FinalProject/simplesim-3.0/sim-cache -redir:sim /home/joshg/Documents/Rutgers/classes/comp-arch-1/Project/FinalProject/results/ss/miss_stream_mc2_d8__dl1:1024:32:1:l__ul2:32768:64:4:l/test-lswlr_miss_stream.txt -cache:il1 il1:32768:64:1:l -cache:dl1 dl1:1024:32:1:l -cache:il2 ul2:32768:64:4:l -cache:dl2 ul2:32768:64:4:l -exp:mode miss_stream -vc:enable 0 -vc:entries 4 -mc:enable 1 -mc:entries 2 -sb:enable 1 -sb:count 1 -sb:depth 8 -sb:degree 1 /home/joshg/Documents/Rutgers/classes/comp-arch-1/Project/FinalProject/traces/test-lswlr 
+sim: command line: /home/joshg/Documents/Rutgers/classes/comp-arch-1-final-proj/FinalProject/simplesim-3.0/sim-cache -redir:sim /home/joshg/Documents/Rutgers/classes/comp-arch-1-final-proj/FinalProject/results/ss/miss_stream_mc2_d8__dl1:1024:32:1:l__ul2:32768:64:4:l/test-lswlr_miss_stream.txt -cache:il1 il1:32768:64:1:l -cache:dl1 dl1:1024:32:1:l -cache:il2 ul2:32768:64:4:l -cache:dl2 ul2:32768:64:4:l -exp:mode miss_stream -vc:enable 0 -vc:entries 4 -mc:enable 1 -mc:entries 2 -sb:enable 1 -sb:count 1 -sb:depth 8 -sb:degree 1 /home/joshg/Documents/Rutgers/classes/comp-arch-1-final-proj/FinalProject/traces/test-lswlr 
 
-sim: simulation started @ Fri Dec 12 15:53:51 2025, options follow:
+sim: simulation started @ Sat Dec 13 00:57:24 2025, options follow:
 
 sim-cache: This simulator implements a functional cache simulator.  Cache
 statistics are generated for a user-selected cache and TLB configuration,
@@ -24,7 +24,7 @@ information is generated.
 -seed                       1 # random number generator seed (0 for timer seed)
 # -q                    false # initialize and terminate immediately
 # -chkpt               <null> # restore EIO trace execution from <fname>
-# -redir:sim     /home/joshg/Documents/Rutgers/classes/comp-arch-1/Project/FinalProject/results/ss/miss_stream_mc2_d8__dl1:1024:32:1:l__ul2:32768:64:4:l/test-lswlr_miss_stream.txt # redirect simulator output to file (non-interactive only)
+# -redir:sim     /home/joshg/Documents/Rutgers/classes/comp-arch-1-final-proj/FinalProject/results/ss/miss_stream_mc2_d8__dl1:1024:32:1:l__ul2:32768:64:4:l/test-lswlr_miss_stream.txt # redirect simulator output to file (non-interactive only)
 # -redir:prog          <null> # redirect simulated program output to file
 -nice                       0 # simulator scheduling priority
 -max:inst                   0 # maximum number of inst's to execute
@@ -77,26 +77,26 @@ information is generated.
 sim: ** starting functional simulation w/ caches **
 
 sim: ** simulation statistics **
-sim_num_insn                   9367 # total number of instructions executed
-sim_num_refs                   4688 # total number of loads and stores executed
+sim_num_insn                   9349 # total number of instructions executed
+sim_num_refs                   4687 # total number of loads and stores executed
 sim_elapsed_time                  1 # total simulation time in seconds
-sim_inst_rate             9367.0000 # simulation speed (in insts/sec)
+sim_inst_rate             9349.0000 # simulation speed (in insts/sec)
 vc_lookups                        0 # victim cache lookup count (DL1 read misses)
 vc_hits                           0 # victim cache hit count
 ul2_d_accesses                  712 # DL2 data-side accesses from DL1 miss handler
 ul2_i_accesses                  253 # IL2 instruction-side accesses from IL1 miss handler
-mc_lookups                      435 # miss cache lookup count (DL1 read misses after victim)
+mc_lookups                      436 # miss cache lookup count (DL1 read misses after victim)
 mc_hits                           0 # miss cache hit count
-sb_lookups                      435 # stream buffer lookup count (DL1 read misses)
-sb_hits                         346 # stream buffer hit count
+sb_lookups                      436 # stream buffer lookup count (DL1 read misses)
+sb_hits                         347 # stream buffer hit count
 sb_prefetches                   623 # stream buffer prefetches issued (to UL2/memory)
-il1.accesses                   9367 # total number of accesses
-il1.hits                       9114 # total number of hits
+il1.accesses                   9349 # total number of accesses
+il1.hits                       9096 # total number of hits
 il1.misses                      253 # total number of misses
 il1.replacements                  0 # total number of replacements
 il1.writebacks                    0 # total number of writebacks
 il1.invalidations                 0 # total number of invalidations
-il1.miss_rate                0.0270 # miss rate (i.e., misses/ref)
+il1.miss_rate                0.0271 # miss rate (i.e., misses/ref)
 il1.repl_rate                0.0000 # replacement rate (i.e., repls/ref)
 il1.wb_rate                  0.0000 # writeback rate (i.e., wrbks/ref)
 il1.inv_rate                 0.0000 # invalidation rate (i.e., invs/ref)
@@ -110,19 +110,19 @@ ul2.miss_rate                1.0000 # miss rate (i.e., misses/ref)
 ul2.repl_rate                0.0000 # replacement rate (i.e., repls/ref)
 ul2.wb_rate                  0.0000 # writeback rate (i.e., wrbks/ref)
 ul2.inv_rate                 0.0000 # invalidation rate (i.e., invs/ref)
-dl1.accesses                   4785 # total number of accesses
-dl1.hits                       4350 # total number of hits
-dl1.misses                      435 # total number of misses
+dl1.accesses                   4784 # total number of accesses
+dl1.hits                       4348 # total number of hits
+dl1.misses                      436 # total number of misses
 dl1.replacements                  1 # total number of replacements
 dl1.writebacks                    0 # total number of writebacks
 dl1.invalidations                 0 # total number of invalidations
-dl1.miss_rate                0.0909 # miss rate (i.e., misses/ref)
+dl1.miss_rate                0.0911 # miss rate (i.e., misses/ref)
 dl1.repl_rate                0.0002 # replacement rate (i.e., repls/ref)
 dl1.wb_rate                  0.0000 # writeback rate (i.e., wrbks/ref)
 dl1.inv_rate                 0.0000 # invalidation rate (i.e., invs/ref)
 ul2.accesses                    253 # total number of accesses
-ul2.hits                        447 # total number of hits
-ul2.misses                      265 # total number of misses
+ul2.hits                        446 # total number of hits
+ul2.misses                      266 # total number of misses
 ul2.replacements                  0 # total number of replacements
 ul2.writebacks                    0 # total number of writebacks
 ul2.invalidations                 0 # total number of invalidations
@@ -130,8 +130,8 @@ ul2.miss_rate                1.0000 # miss rate (i.e., misses/ref)
 ul2.repl_rate                0.0000 # replacement rate (i.e., repls/ref)
 ul2.wb_rate                  0.0000 # writeback rate (i.e., wrbks/ref)
 ul2.inv_rate                 0.0000 # invalidation rate (i.e., invs/ref)
-itlb.accesses                  9367 # total number of accesses
-itlb.hits                      9356 # total number of hits
+itlb.accesses                  9349 # total number of accesses
+itlb.hits                      9338 # total number of hits
 itlb.misses                      11 # total number of misses
 itlb.replacements                 0 # total number of replacements
 itlb.writebacks                   0 # total number of writebacks
@@ -140,8 +140,8 @@ itlb.miss_rate               0.0012 # miss rate (i.e., misses/ref)
 itlb.repl_rate               0.0000 # replacement rate (i.e., repls/ref)
 itlb.wb_rate                 0.0000 # writeback rate (i.e., wrbks/ref)
 itlb.inv_rate                0.0000 # invalidation rate (i.e., invs/ref)
-dtlb.accesses                  4785 # total number of accesses
-dtlb.hits                      4777 # total number of hits
+dtlb.accesses                  4784 # total number of accesses
+dtlb.hits                      4776 # total number of hits
 dtlb.misses                       8 # total number of misses
 dtlb.replacements                 0 # total number of replacements
 dtlb.writebacks                   0 # total number of writebacks
@@ -162,6 +162,6 @@ ld_target_big_endian              0 # target executable endian-ness, non-zero if
 mem.page_count                   27 # total number of pages allocated
 mem.page_mem                   108k # total size of memory pages allocated
 mem.ptab_misses                  27 # total first level page table misses
-mem.ptab_accesses            492282 # total page table accesses
+mem.ptab_accesses            491214 # total page table accesses
 mem.ptab_miss_rate           0.0001 # first level page table miss rate
 
