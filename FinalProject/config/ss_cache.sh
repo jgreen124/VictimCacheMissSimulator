@@ -1,10 +1,15 @@
 # config/ss_cache.sh
 # SimpleScalar cache and experiment configuration
 
-########################################
-# Base cache geometry
-########################################
+# Base cache config
 
+# For passed cache sized parameters, uncomment below
+export SS_IL1_CONFIG="${SS_IL1_CONFIG:-il1:32768:64:1:l}"
+export SS_DL1_CONFIG="${SS_DL1_CONFIG:-dl1:16:32:1:l}"
+export SS_UL2_CONFIG="${SS_UL2_CONFIG:-ul2:8192:64:4:l}"
+
+# For fixed cached parameters, uncomment below
+#########################################
 # # L1 instruction cache
 # export SS_IL1_CONFIG="il1:32768:64:1:l"
 
@@ -13,31 +18,22 @@
 
 # # Unified L2 cache (small UL2)
 # export SS_UL2_CONFIG="ul2:8192:64:4:l"
+#########################################
 
-export SS_IL1_CONFIG="${SS_IL1_CONFIG:-il1:32768:64:1:l}"
-export SS_DL1_CONFIG="${SS_DL1_CONFIG:-dl1:16:32:1:l}"
-export SS_UL2_CONFIG="${SS_UL2_CONFIG:-ul2:8192:64:4:l}"
-
-########################################
-# Experiment mode
-########################################
+# Experiment modes
 # Valid values:
 #   baseline
 #   victim
 #   miss
 #   stream
-#   stream_multi
 #   victim_stream
 #
 # You can override this from the environment, e.g.:
-#   SS_MODE=miss ss_sweep
+# Ex: SS_MODE=miss ss_sweep
 
 export SS_MODE="${SS_MODE:-baseline}"
 
-########################################
-# Default parameters (can be overridden by mode)
-########################################
-
+# Default parameters, can be overridden by mode
 # Victim cache parameters
 SS_VC_ENTRIES="${SS_VC_ENTRIES:-4}"
 
@@ -49,9 +45,7 @@ SS_SB_COUNT="${SS_SB_COUNT:-1}"
 SS_SB_DEPTH="${SS_SB_DEPTH:-4}"
 SS_SB_DEGREE="${SS_SB_DEGREE:-1}"
 
-########################################
-# Mode → feature mapping
-########################################
+# Mode-specific overrides, sets enable flags
 
 case "${SS_MODE}" in
   baseline)
@@ -76,13 +70,6 @@ case "${SS_MODE}" in
     SS_VC_ENABLE=0
     SS_MC_ENABLE=0
     SS_SB_ENABLE=1
-    ;;
-
-  stream_multi)
-    SS_VC_ENABLE=0
-    SS_MC_ENABLE=0
-    SS_SB_ENABLE=1
-    SS_SB_COUNT="${SS_SB_COUNT:-4}"
     ;;
 
   victim_stream)

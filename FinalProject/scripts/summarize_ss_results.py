@@ -40,7 +40,7 @@ def main():
                 if not bench or bench.lower() == "benchmark":
                     continue
 
-                # Basic stats (strings are fine — we just pass them through)
+                # Basic stats
                 il1_miss = (row.get("il1_miss_rate") or "").strip()
                 dl1_miss = (row.get("dl1_miss_rate") or "").strip()
                 ul2_miss = (row.get("ul2_miss_rate") or "").strip()
@@ -65,9 +65,7 @@ def main():
                 ul2_d = (row.get("ul2_d_accesses") or "").strip()
                 ul2_i = (row.get("ul2_i_accesses") or "").strip()
 
-                # ------------------------------------------------------------------
                 # Derived metrics
-                # ------------------------------------------------------------------
 
                 # Victim cache hit rate
                 vc_lookup_f = safe_float(vc_lookups)
@@ -123,9 +121,7 @@ def main():
                     "source_csv": str(csv_path),
                 })
 
-    # ----------------------------------------------------------------------
-    # Write the combined CSV
-    # ----------------------------------------------------------------------
+    # Output to CSV
     SUMMARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     fieldnames = [

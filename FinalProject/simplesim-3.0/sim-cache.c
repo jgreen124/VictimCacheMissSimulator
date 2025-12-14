@@ -74,103 +74,101 @@
  * generated (hence the distinction, "functional" simulator).
  */
 
-/* simulated registers */
+// simulated registers
 static struct regs_t regs;
 
-/* simulated memory */
+// simulated memory
 static struct mem_t *mem = NULL;
 
-/* track number of insn and refs */
+// track number of instructions and references
 static counter_t sim_num_refs = 0;
 
-/* victim cache statistics */
+// victim cache statistics
 static counter_t vc_lookups = 0;  /* how many times we checked victim buffer */
 static counter_t vc_hits    = 0;  /* how many times victim buffer hit */
 
-/* UL2 access statistics */
-static counter_t ul2_d_accesses = 0;  /* DL1 → DL2 accesses */
-static counter_t ul2_i_accesses = 0;  /* IL1 → IL2 accesses */
+// UL2 access statistics
+static counter_t ul2_d_accesses = 0;  /* DL1 to DL2 accesses */
+static counter_t ul2_i_accesses = 0;  /* IL1 to IL2 accesses */
 
-/* maximum number of inst's to execute */
+// max number of inst to execute
 static unsigned int max_insts;
 
-/* level 1 instruction cache, entry level instruction cache */
+// level 1 instruction cache
 static struct cache_t *cache_il1 = NULL;
 
-/* level 1 instruction cache */
+// level 2 instruction cache
 static struct cache_t *cache_il2 = NULL;
 
-/* level 1 data cache, entry level data cache */
+// level 1 data cache
 static struct cache_t *cache_dl1 = NULL;
 
-/* level 2 data cache */
+// level 2 data cache
 static struct cache_t *cache_dl2 = NULL;
 
-/* instruction TLB */
+// instruction TLB
 static struct cache_t *itlb = NULL;
 
-/* data TLB */
+// instruction TLB
 static struct cache_t *dtlb = NULL;
 
 
-/* -------------------------------------------------------------------------
- * Experiment controls: victim cache, miss cache, stream buffers
- * ------------------------------------------------------------------------- */
+// Experiment controls: victim cache, miss cache, and stream buffer
 
-/* Experiment mode (for stats/reporting; not used for control flow directly) */
-static char *exp_mode = "baseline"; /* baseline, victim, miss, stream, stream_multi, victim_stream */
+// Experiment mode (for stats/reporting)
+static char *exp_mode = "baseline"; // baseline, victim, miss, stream, stream_multi, victim_stream
 
-/* Victim cache for DL1 */
+// Victim cache for DL1
 static int vc_enable = FALSE;
 static int vc_entries = 4;
 
-/* Victim buffer state: simple fully-associative buffer of block addresses */
+// Victim buffer state: fully-associative buffer of block addresses
 static md_addr_t *vc_lines = NULL;
 static int *vc_valid = NULL;
 
-/* Miss cache (optional; stub for later) */
+// Miss cache
 static int mc_enable = FALSE;
 static int mc_entries = 4;
 
-/* Miss cache (DL1) – simple fully-associative buffer of block addresses */
+// Miss cache (DL1) – fully-associative buffer of block addresses
 static md_addr_t *mc_lines = NULL;
 static int *mc_valid = NULL;
 
-/* Miss cache statistics */
-static counter_t mc_lookups = 0; /* number of times we probed the miss cache */
-static counter_t mc_hits = 0;    /* number of times miss cache hit */
+// Miss cache statistics
+static counter_t mc_lookups = 0; // number of times we probed the miss cache
+static counter_t mc_hits = 0;    // number of times miss cache hit
 
-/* Stream buffer statistics */
-static counter_t sb_lookups = 0;    /* DL1 read misses checked vs stream buffers */
-static counter_t sb_hits = 0;       /* stream buffer hit count */
-static counter_t sb_prefetches = 0; /* prefetches issued from stream buffers */
+// Stream buffer statistics
+static counter_t sb_lookups = 0;    // DL1 read misses checked in stream buffers
+static counter_t sb_hits = 0;       // stream buffer hit count
+static counter_t sb_prefetches = 0; // prefetches issued from stream buffers
 
-/* Stream buffer configuration */
+// Stream buffer configuration
 static int sb_enable = FALSE;
 static int sb_count = 1;
 static int sb_depth = 4;
 static int sb_degree = 1;
 
-/* Simple stream buffer metadata */
+// Stream buffer metadata structure
 struct stream_buffer_t
 {
-  md_addr_t base_line_addr; /* aligned address of current stream start */
+  md_addr_t base_line_addr; // aligned address of current stream start
   int valid;
   int depth;
-  int head;   /* index of next line to consume */
+  int head;                 // index of next line to consume
   int filled;
 };
 
 static struct stream_buffer_t *sbuffers = NULL;
 
 
-/* text-based stat profiles */
+// text-based stat profiles
 #define MAX_PCSTAT_VARS 8
 static struct stat_stat_t *pcstat_stats[MAX_PCSTAT_VARS];
 static counter_t pcstat_lastvals[MAX_PCSTAT_VARS];
 static struct stat_stat_t *pcstat_sdists[MAX_PCSTAT_VARS];
 
-/* wedge all stat values into a counter_t */
+// wedge all stat values into a counter_t
 #define STATVAL(STAT)							\
   ((STAT)->sc == sc_int							\
    ? (counter_t)*((STAT)->variant.for_int.var)				\
@@ -180,41 +178,41 @@ static struct stat_stat_t *pcstat_sdists[MAX_PCSTAT_VARS];
 	 ? *((STAT)->variant.for_counter.var)				\
 	 : (panic("bad stat class"), 0))))
 
-/* l1 data cache l1 block miss handler function */
-static unsigned int			/* latency of block access */
-dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
-	      md_addr_t baddr,		/* block address to access */
-	      int bsize,		/* size of block to access */
-	      struct cache_blk_t *blk,	/* ptr to block in upper level */
-	      tick_t now)		/* time of access */
+// l1 data cache l1 block miss handler function
+static unsigned int			// latency of block access
+dl1_access_fn(enum mem_cmd cmd,		// access cmd, Read or Write
+	      md_addr_t baddr,		// block address to access
+	      int bsize,		// size of block to access
+	      struct cache_blk_t *blk,	// ptr to block in upper level
+	      tick_t now)		// time of access
 {
-  static int mc_repl_index = 0; /* simple round-robin for miss cache */
-  static int vc_repl_index = 0;  /* simple round-robin for victim buffer */
+  static int mc_repl_index = 0; // round-robin for miss cache
+  static int vc_repl_index = 0;  // round-robin for victim buffer
   unsigned int lat;
 
-  /* If victim cache is enabled, check victim buffer first on DL1 miss.
-     Note: we only use it for READs (classic victim-cache behavior). */
+  // If victim cache is enabled, check victim buffer first on DL1 miss.
+  // Check only for READs.
   if (vc_enable && vc_lines != NULL && vc_valid != NULL && cmd == Read)
     {
       int i;
 
-      /* We are looking in the victim buffer because DL1 just missed */
+      // look in victim cache after dl1 miss
       vc_lookups++;
 
       for (i = 0; i < vc_entries; i++)
         {
           if (vc_valid[i] && vc_lines[i] == baddr)
             {
-              /* Victim hit: satisfied by victim buffer, do not go to DL2 */
+              // Victim hit: satisfied by victim buffer, do not go to DL2
               vc_hits++;
 
-              vc_valid[i] = 0; /* simple model: consume this victim entry */
-              return 1;        /* nominal latency */
+              vc_valid[i] = 0; // consume this victim entry
+              return 1;        // nominal latency
             }
         }
     }
 
-  /* Miss cache lookup (only on reads, after victim cache) */
+  // Miss cache lookup (only on reads, after victim cache)
   if (mc_enable && mc_lines != NULL && mc_valid != NULL && cmd == Read)
     {
       int j;
@@ -225,25 +223,25 @@ dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
         {
           if (mc_valid[j] && mc_lines[j] == baddr)
             {
-              /* Miss cache hit: we model this as satisfied without going to DL2 */
+              // Miss hit: satisfied by miss cache, do not go to DL2
               mc_hits++;
-              return 1; /* nominal latency */
+              return 1; // nominal latency
             }
         }
     }
 
-  /* No victim hit (or victim disabled): go to next level as usual */
-  /* Stream buffer: probe before going to DL2 (read misses only) */
+  // No victim hit (or victim disabled): go to next level of cache hierarchy
+  // Stream buffer: probe before going to DL2 (read misses only)
   if (sb_enable && sbuffers != NULL && cmd == Read)
     {
-      md_addr_t line_addr = baddr & ~((md_addr_t)(bsize - 1)); /* align to block */
+      md_addr_t line_addr = baddr & ~((md_addr_t)(bsize - 1)); // align to block size
       int hit_buf = -1;
       int hit_offset = -1;
       int i;
 
       sb_lookups++;
 
-      /* Search existing streams for this line */
+      // Search existing streams for this line
       for (i = 0; i < sb_count; i++)
         {
           if (!sbuffers[i].valid)
@@ -256,13 +254,13 @@ dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
 
           md_addr_t diff = line_addr - base;
 
-          /* Must be aligned to block size */
+          // Must be aligned to block size
           if ((diff % (md_addr_t)bsize) != 0)
             continue;
 
           int offset = (int)(diff / (md_addr_t)bsize);
 
-          /* Only a hit if it is at or ahead of head, and within FILLED */
+          // Only a hit if it is at or ahead of head, and wihthin FILLED
           if (offset < sbuffers[i].head || offset >= sbuffers[i].filled)
             continue;
 
@@ -273,21 +271,21 @@ dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
 
       if (hit_buf >= 0)
         {
-          /* Stream buffer hit: satisfy from SB, no DL2 access */
+          // Stream buffer hit: satisfy from SB, no DL2 access
           sb_hits++;
 
-          /* Advance head to one past this block */
+          // Advance head to one past this block
           sbuffers[hit_buf].head = hit_offset + 1;
 
-          /* If we've consumed everything that was prefetched, invalidate stream */
+          // Invalidate stream if everything prefetched is consumed
           if (sbuffers[hit_buf].head >= sbuffers[hit_buf].filled)
             sbuffers[hit_buf].valid = FALSE;
 
-          return 1; /* nominal latency */
+          return 1; // nominal latency
         }
       else
         {
-          /* Miss in all stream buffers → allocate/refresh a buffer for new stream */
+          // Miss in all stream buffers, allocate/refresh a buffer for new stream
           static int sb_repl_index = 0;
           int idx = sb_repl_index;
 
@@ -297,19 +295,19 @@ dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
 
           sbuffers[idx].base_line_addr = line_addr;
           sbuffers[idx].valid = TRUE;
-          sbuffers[idx].head = 1;   /* base line is being consumed now */
-          sbuffers[idx].filled = 1; /* offset 0 is valid conceptually */
+          sbuffers[idx].head = 1;   // base line is being consumed now
+          sbuffers[idx].filled = 1; // offset 0 is valid conceptually
 
           {
             int d;
             int max_depth = sbuffers[idx].depth;
 
-            /* Prefetch ALL remaining lines in this stream window: offsets [1..depth-1] */
+            // Prefetch ALL remaining lines in this stream window: offsets [1..depth-1]
             for (d = 1; d < max_depth; d++)
               {
                 md_addr_t pf_addr = line_addr + (md_addr_t)d * (md_addr_t)bsize;
 
-                /* Model prefetch into the hierarchy (UL2 if present; otherwise memory). */
+                // Model prefetch into the hierarchy (UL2 if present; otherwise memory).
                 if (cache_dl2)
                   {
                     ul2_d_accesses++;
@@ -318,30 +316,30 @@ dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
                   }
 
                 sb_prefetches++;
-                sbuffers[idx].filled++; /* now this offset is considered present in SB */
+                sbuffers[idx].filled++; // now this offset is considered present in SB
               }
           }
         }
     }
   if (cache_dl2)
     {
-      /* count DL1 → DL2 accesses */
+      // count DL1 to DL2 accesses
       ul2_d_accesses++;
 
-      /* access next level of data cache hierarchy */
+      // access next level of data cache hierarchy
       lat = cache_access(cache_dl2, cmd, baddr, NULL, bsize,
                          /* now */now, /* pudata */NULL, /* repl addr */NULL);
     }
   else
     {
-      /* access main memory, which is always done in the main simulator loop */
+      // access main memory, which is always done in the main simulator loop
       lat = /* access latency, ignored */1;
     }
 
-  /* On READs, install this line into miss cache and victim buffer */
+  // On READs, install this line into miss cache and victim buffer
   if (cmd == Read)
     {
-      /* Miss cache install */
+      // Miss cache install
       if (mc_enable && mc_lines != NULL && mc_valid != NULL)
         {
           mc_lines[mc_repl_index] = baddr;
@@ -352,7 +350,7 @@ dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
             mc_repl_index = 0;
         }
 
-      /* Victim cache install */
+      // Victim buffer install
       if (vc_enable && vc_lines != NULL && vc_valid != NULL)
         {
           vc_lines[vc_repl_index] = baddr;
@@ -369,20 +367,20 @@ dl1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
 
 
 
-/* l2 data cache block miss handler function */
-static unsigned int			/* latency of block access */
-dl2_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
-	      md_addr_t baddr,		/* block address to access */
-	      int bsize,		/* size of block to access */
-	      struct cache_blk_t *blk,	/* ptr to block in upper level */
-	      tick_t now)		/* time of access */
+// l2 data cache block miss handler function
+static unsigned int	 // latency of block access
+dl2_access_fn(enum mem_cmd cmd,		// access cmd, Read or Write 
+	      md_addr_t baddr,		// block address to access
+	      int bsize,		// size of block to access
+	      struct cache_blk_t *blk,	// ptr to block in upper level
+	      tick_t now)		// time of access
 {
-  /* this is a miss to the lowest level, so access main memory, which is
-     always done in the main simulator loop */
+  // this is a miss to the lowest level, so access main memory, which is
+  // always done in the main simulator loop
   return /* access latency, ignored */1;
 }
 
-/* l1 inst cache l1 block miss handler function */
+// l1 inst cache l1 block miss handler function
 static unsigned int
 il1_access_fn(enum mem_cmd cmd,
 	      md_addr_t baddr,
@@ -392,66 +390,66 @@ il1_access_fn(enum mem_cmd cmd,
 {
   if (cache_il2)
     {
-      /* count IL1 → IL2 accesses */
+      // count IL1 to IL2 accesses
       ul2_i_accesses++;
 
-      /* access next level of inst cache hierarchy */
+      // access next level of inst cache hierarchy
       return cache_access(cache_il2, cmd, baddr, NULL, bsize,
 			  /* now */now, /* pudata */NULL, /* repl addr */NULL);
     }
   else
     {
-      /* access main memory, which is always done in the main simulator loop */
+      // access main memory, which is always done in the main simulator loop
       return /* access latency, ignored */1;
     }
 }
 
-/* l2 inst cache block miss handler function */
-static unsigned int			/* latency of block access */
-il2_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
-	      md_addr_t baddr,		/* block address to access */
-	      int bsize,		/* size of block to access */
-	      struct cache_blk_t *blk,	/* ptr to block in upper level */
-	      tick_t now)		/* time of access */
+// l2 inst cache block miss handler function
+static unsigned int			// latency of block access
+il2_access_fn(enum mem_cmd cmd,		// access cmd, Read or Write
+	      md_addr_t baddr,		// block address to access
+	      int bsize,		// size of block to access
+	      struct cache_blk_t *blk,	// ptr to block in upper level
+	      tick_t now)		// time of access
 {
-  /* this is a miss to the lowest level, so access main memory, which is
-     always done in the main simulator loop */
+  // this is a miss to the lowest level, so access main memory, which is
+  // always done in the main simulator loop
   return /* access latency, ignored */1;
 }
 
-/* inst cache block miss handler function */
-static unsigned int			/* latency of block access */
-itlb_access_fn(enum mem_cmd cmd,	/* access cmd, Read or Write */
-	       md_addr_t baddr,	/* block address to access */
-	       int bsize,		/* size of block to access */
-	       struct cache_blk_t *blk,	/* ptr to block in upper level */
-	       tick_t now)		/* time of access */
+// inst cache block miss handler function
+static unsigned int			// latency of block access  
+itlb_access_fn(enum mem_cmd cmd,	// access cmd, Read or Write 
+	       md_addr_t baddr,	// block address to access
+	       int bsize,		// size of block to access
+	       struct cache_blk_t *blk,	// ptr to block in upper level
+	       tick_t now)		// time of access
 {
   md_addr_t *phy_page_ptr = (md_addr_t *)blk->user_data;
 
-  /* no real memory access, however, should have user data space attached */
+  // no real memory access, however, should have user data space attached
   assert(phy_page_ptr);
 
-  /* fake translation, for now... */
+  // fake translation
   *phy_page_ptr = 0;
 
   return /* access latency, ignored */1;
 }
 
-/* data cache block miss handler function */
-static unsigned int			/* latency of block access */
-dtlb_access_fn(enum mem_cmd cmd,	/* access cmd, Read or Write */
-	       md_addr_t baddr,		/* block address to access */
-	       int bsize,		/* size of block to access */
-	       struct cache_blk_t *blk,	/* ptr to block in upper level */
-	       tick_t now)		/* time of access */
+// data cache block miss handler function
+static unsigned int			// latency of block access
+dtlb_access_fn(enum mem_cmd cmd,	// access cmd, Read or Write
+	       md_addr_t baddr,		// block address to access
+	       int bsize,		// size of block to access
+	       struct cache_blk_t *blk,	// ptr to block in upper level
+	       tick_t now)		// time of access
 {
   md_addr_t *phy_page_ptr = (md_addr_t *)blk->user_data;
 
-  /* no real memory access, however, should have user data space attached */
+  // no real memory access, however, should have user data space attached
   assert(phy_page_ptr);
 
-  /* fake translation, for now... */
+  // fake translation
   *phy_page_ptr = 0;
 
   return /* access latency, ignored */1;
@@ -467,24 +465,24 @@ static char *dtlb_opt /* = "none" */;
 static int flush_on_syscalls /* = FALSE */;
 static int compress_icache_addrs /* = FALSE */;
 
-/* text-based stat profiles */
+// text-based stat profiles
 static int pcstat_nelt = 0;
 static char *pcstat_vars[MAX_PCSTAT_VARS];
 
-/* convert 64-bit inst text addresses to 32-bit inst equivalents */
+// convert 64-bit inst text addresses to 32-bit inst equivalents
 #ifdef TARGET_PISA
 #define IACOMPRESS(A)							\
   (compress_icache_addrs ? ((((A) - ld_text_base) >> 1) + ld_text_base) : (A))
 #define ISCOMPRESS(SZ)							\
   (compress_icache_addrs ? ((SZ) >> 1) : (SZ))
-#else /* !TARGET_PISA */
+#else // !TARGET_PISA
 #define IACOMPRESS(A)		(A)
 #define ISCOMPRESS(SZ)		(SZ)
-#endif /* TARGET_PISA */
+#endif // TARGET_PISA
 
-/* Registe simulator-specific options */
+// Registe simulator-specific options
 void
-sim_reg_options(struct opt_odb_t *odb)	/* options database */
+sim_reg_options(struct opt_odb_t *odb)	// options database
 {
   opt_reg_header(odb, 
 "sim-cache: This simulator implements a functional cache simulator.  Cache\n"
@@ -494,7 +492,7 @@ sim_reg_options(struct opt_odb_t *odb)	/* options database */
 "information is generated.\n"
 		 );
 
-  /* instruction limit */
+  // instruction limit
   opt_reg_uint(odb, "-max:inst", "maximum number of inst's to execute",
 	       &max_insts, /* default */0,
 	       /* print */TRUE, /* format */NULL);
@@ -556,9 +554,7 @@ sim_reg_options(struct opt_odb_t *odb)	/* options database */
 		      pcstat_vars, MAX_PCSTAT_VARS, &pcstat_nelt, NULL,
 		      /* !print */FALSE, /* format */NULL, /* accrue */TRUE);
 
-  /* --------------------------------------------------------------------
-   * Experiment options: mode, victim cache, miss cache, stream buffers
-   * -------------------------------------------------------------------- */
+// Experiment options: victim cache, miss cache, stream buffer  
 
   opt_reg_string(odb, "-exp:mode",
 		 "experiment mode (baseline, victim, miss, stream, stream_multi, victim_stream)",
@@ -600,25 +596,25 @@ sim_reg_options(struct opt_odb_t *odb)	/* options database */
 }
 
 
-/* check simulator-specific option values */
+// check simulator-specific option values
 void
-sim_check_options(struct opt_odb_t *odb,	/* options database */
-		  int argc, char **argv)	/* command line arguments */
+sim_check_options(struct opt_odb_t *odb,	// options database
+		  int argc, char **argv)	// command line arguments
 {
   char name[128], c;
   int nsets, bsize, assoc;
 
-  /* use a level 1 D-cache? */
+  // use a level 1 D-cache?
   if (!mystricmp(cache_dl1_opt, "none"))
     {
       cache_dl1 = NULL;
 
-      /* the level 2 D-cache cannot be defined */
+      // the level 2 D-cache cannot be defined
       if (strcmp(cache_dl2_opt, "none"))
 	fatal("the l1 data cache must defined if the l2 cache is defined");
       cache_dl2 = NULL;
     }
-  else /* dl1 is defined */
+  else // dl1 is defined
     {
       if (sscanf(cache_dl1_opt, "%[^:]:%d:%d:%d:%c",
 		 name, &nsets, &bsize, &assoc, &c) != 5)
@@ -627,7 +623,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 			       /* usize */0, assoc, cache_char2policy(c),
 			       dl1_access_fn, /* hit latency */1);
 
-      /* is the level 2 D-cache defined? */
+      // is the level 2 D-cache defined?
       if (!mystricmp(cache_dl2_opt, "none"))
 	cache_dl2 = NULL;
       else
@@ -642,12 +638,12 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	}
     }
 
-  /* use a level 1 I-cache? */
+  // use a level 1 I-cache?
   if (!mystricmp(cache_il1_opt, "none"))
     {
       cache_il1 = NULL;
 
-      /* the level 2 I-cache cannot be defined */
+      // the level 2 I-cache cannot be defined
       if (strcmp(cache_il2_opt, "none"))
 	fatal("the l1 inst cache must defined if the l2 cache is defined");
       cache_il2 = NULL;
@@ -658,7 +654,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	fatal("I-cache l1 cannot access D-cache l1 as it's undefined");
       cache_il1 = cache_dl1;
 
-      /* the level 2 I-cache cannot be defined */
+      // the level 2 I-cache cannot be defined
       if (strcmp(cache_il2_opt, "none"))
 	fatal("the l1 inst cache must defined if the l2 cache is defined");
       cache_il2 = NULL;
@@ -669,7 +665,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	fatal("I-cache l1 cannot access D-cache l2 as it's undefined");
       cache_il1 = cache_dl2;
 
-      /* the level 2 I-cache cannot be defined */
+      // the level 2 I-cache cannot be defined
       if (strcmp(cache_il2_opt, "none"))
 	fatal("the l1 inst cache must defined if the l2 cache is defined");
       cache_il2 = NULL;
@@ -683,7 +679,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 			       /* usize */0, assoc, cache_char2policy(c),
 			       il1_access_fn, /* hit latency */1);
 
-      /* is the level 2 D-cache defined? */
+      // is the level 2 D-cache defined?
       if (!mystricmp(cache_il2_opt, "none"))
 	cache_il2 = NULL;
       else if (!mystricmp(cache_il2_opt, "dl2"))
@@ -704,11 +700,9 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	}
     }
 
-    /* --------------------------------------------------------------------
-   * Extra structures: victim cache and stream buffers
-   * -------------------------------------------------------------------- */
+  // Extra structures: victim cache and miss cache
 
-  /* Victim buffer for DL1: small fully-associative buffer of block addresses */
+  // Victim buffer for DL1: small fully-associative buffer of block addresses
   if (vc_enable && cache_dl1 != NULL)
     {
       int i;
@@ -722,7 +716,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	vc_valid[i] = 0;
     }
 
-  /* Miss cache: small fully-associative buffer of block addresses */
+  // Miss cache: small fully-associative buffer of block addresses
   if (mc_enable && cache_dl1 != NULL)
     {
       int i;
@@ -736,7 +730,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	mc_valid[i] = 0;
     }
 
-  /* Stream buffers: allocate metadata only (we will use existing caches for storage) */
+  // Stream buffers: allocate metadata only
   if (sb_enable && sb_count > 0 && sb_depth > 0)
     {
       int i;
@@ -755,7 +749,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	}
     }
 
-  /* use an I-TLB? */
+  // use an I-TLB?
   if (!mystricmp(itlb_opt, "none"))
     itlb = NULL;
   else
@@ -769,7 +763,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 			  /* hit latency */1);
     }
 
-  /* use a D-TLB? */
+  // use a D-TLB?
   if (!mystricmp(dtlb_opt, "none"))
     dtlb = NULL;
   else
@@ -784,61 +778,61 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
     }
 }
 
-/* initialize the simulator */
+// initialize the simulator
 void
 sim_init(void)
 {
   sim_num_refs = 0;
 
-  /* allocate and initialize register file */
+  // allocate and initialize register file
   regs_init(&regs);
 
-  /* allocate and initialize memory space */
+  // allocate and initialize memory space
   mem = mem_create("mem");
   mem_init(mem);
 }
 
-/* local machine state accessor */
-static char *					/* err str, NULL for no err */
-cache_mstate_obj(FILE *stream,			/* output stream */
-		 char *cmd,			/* optional command string */
-		 struct regs_t *regs,		/* register to access */
-		 struct mem_t *mem)		/* memory to access */
+// local machine state accessor
+static char *					// err str, NULL for no err */
+cache_mstate_obj(FILE *stream,			// output stream
+		 char *cmd,			// optional command string
+		 struct regs_t *regs,		// register to access
+		 struct mem_t *mem)		// memory to access
 {
-  /* just dump intermediate stats */
+  // just dump intermediate stats
   sim_print_stats(stream);
 
-  /* no error */
+  // no error
   return NULL;
 }
 
-/* load program into simulated state */
+// load program into simulated state
 void
-sim_load_prog(char *fname,		/* program to load */
-	      int argc, char **argv,	/* program arguments */
-	      char **envp)		/* program environment */
+sim_load_prog(char *fname,		// program to load
+	      int argc, char **argv,	// program arguments
+	      char **envp)		// program environment
 {
-  /* load program text and data, set up environment, memory, and regs */
+  // load program text and data, set up environment, memory, and regs
   ld_load_prog(fname, argc, argv, envp, &regs, mem, TRUE);
 
-  /* initialize the DLite debugger */
+  // initialize the DLite debugger
   dlite_init(md_reg_obj, dlite_mem_obj, cache_mstate_obj);
 }
 
-/* print simulator-specific configuration information */
+// print simulator-specific configuration information
 void
-sim_aux_config(FILE *stream)		/* output stream */
+sim_aux_config(FILE *stream)		// output stream
 {
-  /* nada */
+  // nada
 }
 
-/* register simulator-specific statistics */
+// register simulator-specific statistics
 void
-sim_reg_stats(struct stat_sdb_t *sdb)	/* stats database */
+sim_reg_stats(struct stat_sdb_t *sdb)	// stats database
 {
   int i;
 
-  /* register baseline stats */
+  // register baseline stats
   stat_reg_counter(sdb, "sim_num_insn",
 		   "total number of instructions executed",
 		   &sim_num_insn, sim_num_insn, NULL);
@@ -852,28 +846,28 @@ sim_reg_stats(struct stat_sdb_t *sdb)	/* stats database */
 		   "simulation speed (in insts/sec)",
 		   "sim_num_insn / sim_elapsed_time", NULL);
 
-  /* victim cache stats */
+  // victim cache stats
   stat_reg_counter(sdb, "vc_lookups",
                    "victim cache lookup count (DL1 read misses)",
                    &vc_lookups, 0, NULL);
   stat_reg_counter(sdb, "vc_hits",
                    "victim cache hit count",
                    &vc_hits, 0, NULL);
-  /* UL2 access statistics */
+  // UL2 access statistics
   stat_reg_counter(sdb, "ul2_d_accesses",
                    "DL2 data-side accesses from DL1 miss handler",
                    &ul2_d_accesses, 0, NULL);
   stat_reg_counter(sdb, "ul2_i_accesses",
                    "IL2 instruction-side accesses from IL1 miss handler",
                    &ul2_i_accesses, 0, NULL);
-  /* miss cache statistics */
+  // miss cache statistics
   stat_reg_counter(sdb, "mc_lookups",
                    "miss cache lookup count (DL1 read misses after victim)",
                    &mc_lookups, 0, NULL);
   stat_reg_counter(sdb, "mc_hits",
                    "miss cache hit count",
                    &mc_hits, 0, NULL);
-  /* stream buffer statistics */
+  // stream buffer statistics
   stat_reg_counter(sdb, "sb_lookups",
                    "stream buffer lookup count (DL1 read misses)",
                    &sb_lookups, 0, NULL);
@@ -886,7 +880,7 @@ sim_reg_stats(struct stat_sdb_t *sdb)	/* stats database */
 
 
 
-  /* register cache stats */
+  // register cache stats
   if (cache_il1
       && (cache_il1 != cache_dl1 && cache_il1 != cache_dl2))
     cache_reg_stats(cache_il1, sdb);
@@ -907,23 +901,23 @@ sim_reg_stats(struct stat_sdb_t *sdb)	/* stats database */
       char buf[512], buf1[512];
       struct stat_stat_t *stat;
 
-      /* track the named statistical variable by text address */
+      // track the named statistical variable by text address
 
-      /* find it... */
+      // find it...
       stat = stat_find_stat(sdb, pcstat_vars[i]);
       if (!stat)
 	fatal("cannot locate any statistic named `%s'", pcstat_vars[i]);
 
-      /* stat must be an integral type */
+      // stat must be an integral type
       if (stat->sc != sc_int && stat->sc != sc_uint && stat->sc != sc_counter)
 	fatal("`-pcstat' statistical variable `%s' is not an integral type",
 	      stat->name);
 
-      /* register this stat */
+      // register this stat
       pcstat_stats[i] = stat;
       pcstat_lastvals[i] = STATVAL(stat);
 
-      /* declare the sparce text distribution */
+      // declare the sparce text distribution
       sprintf(buf, "%s_by_pc", stat->name);
       sprintf(buf1, "%s (by text address)", stat->desc);
       pcstat_sdists[i] = stat_reg_sdist(sdb, buf, buf1,
@@ -936,18 +930,18 @@ sim_reg_stats(struct stat_sdb_t *sdb)	/* stats database */
   mem_reg_stats(mem, sdb);
 }
 
-/* dump simulator-specific auxiliary simulator statistics */
+// dump simulator-specific auxiliary simulator statistics
 void
-sim_aux_stats(FILE *stream)		/* output stream */
+sim_aux_stats(FILE *stream)		// output stream
 {
-  /* nada */
+  // nada
 }
 
-/* un-initialize the simulator */
+// un-initialize the simulator
 void
 sim_uninit(void)
 {
-  /* nada */
+  // nada
 }
 
 /*
@@ -958,19 +952,19 @@ sim_uninit(void)
  * precise architected register accessors
  */
 
-/* next program counter */
+// next program counter
 #define SET_NPC(EXPR)		(regs.regs_NPC = (EXPR))
 
-/* current program counter */
+// current program counter
 #define CPC			(regs.regs_PC)
 
-/* general purpose registers */
+// general purpose registers
 #define GPR(N)			(regs.regs_R[N])
 #define SET_GPR(N,EXPR)		(regs.regs_R[N] = (EXPR))
 
 #if defined(TARGET_PISA)
 
-/* floating point registers, L->word, F->single-prec, D->double-prec */
+// floating point registers, L->word, F->single-prec, D->double-prec
 #define FPR_L(N)		(regs.regs_F.l[(N)])
 #define SET_FPR_L(N,EXPR)	(regs.regs_F.l[(N)] = (EXPR))
 #define FPR_F(N)		(regs.regs_F.f[(N)])
@@ -988,13 +982,13 @@ sim_uninit(void)
 
 #elif defined(TARGET_ALPHA)
 
-/* floating point registers, L->word, F->single-prec, D->double-prec */
+// floating point registers, L->word, F->single-prec, D->double-prec
 #define FPR_Q(N)		(regs.regs_F.q[N])
 #define SET_FPR_Q(N,EXPR)	(regs.regs_F.q[N] = (EXPR))
 #define FPR(N)			(regs.regs_F.d[N])
 #define SET_FPR(N,EXPR)		(regs.regs_F.d[N] = (EXPR))
 
-/* miscellaneous register accessors */
+// miscellaneous register accessors
 #define FPCR			(regs.regs_C.fpcr)
 #define SET_FPCR(EXPR)		(regs.regs_C.fpcr = (EXPR))
 #define UNIQ			(regs.regs_C.uniq)
@@ -1004,7 +998,7 @@ sim_uninit(void)
 #error No ISA target defined...
 #endif
 
-/* precise architected memory state accessor macros */
+// precise architected memory state accessor macros
 #define __READ_CACHE(addr, SRC_T)					\
   ((dtlb								\
     ? cache_access(dtlb, Read, (addr), NULL,				\
@@ -1055,13 +1049,13 @@ sim_uninit(void)
    __WRITE_CACHE(addr, qword_t), MEM_WRITE_QWORD(mem, addr, (SRC)))
 #endif /* HOST_HAS_QWORD */
 
-/* system call memory access function */
+// system call memory access function
 enum md_fault_type
-dcache_access_fn(struct mem_t *mem,	/* memory space to access */
-		 enum mem_cmd cmd,	/* memory access cmd, Read or Write */
-		 md_addr_t addr,	/* data address to access */
-		 void *p,		/* data input/output buffer */
-		 int nbytes)		/* number of bytes to access */
+dcache_access_fn(struct mem_t *mem,	// memory space to access
+		 enum mem_cmd cmd,	// memory access cmd, Read or Write
+		 md_addr_t addr,	// data address to access
+		 void *p,		// data input/output buffer
+		 int nbytes)		// number of bytes to access
 {
   if (dtlb)
     cache_access(dtlb, cmd, addr, NULL, nbytes, 0, NULL, NULL);
@@ -1073,7 +1067,7 @@ dcache_access_fn(struct mem_t *mem,	/* memory space to access */
 
 
 
-/* system call handler macro */
+// system call handler macro
 #define SYSCALL(INST)							\
   (flush_on_syscalls							\
    ? ((dtlb ? cache_flush(dtlb, 0) : 0),				\
@@ -1082,7 +1076,7 @@ dcache_access_fn(struct mem_t *mem,	/* memory space to access */
       sys_syscall(&regs, mem_access, mem, INST, TRUE))			\
    : sys_syscall(&regs, dcache_access_fn, mem, INST, TRUE))
 
-/* start simulation, program loaded, processor precise state initialized */
+// start simulation, program loaded, processor precise state initialized
 void
 sim_main(void)
 {
@@ -1095,23 +1089,23 @@ sim_main(void)
 
   fprintf(stderr, "sim: ** starting functional simulation w/ caches **\n");
 
-  /* set up initial default next PC */
+  // set up initial default next PC
   regs.regs_NPC = regs.regs_PC + sizeof(md_inst_t);
 
-  /* check for DLite debugger entry condition */
+  // check for DLite debugger entry condition
   if (dlite_check_break(regs.regs_PC, /* no access */0, /* addr */0, 0, 0))
     dlite_main(regs.regs_PC - sizeof(md_inst_t), regs.regs_PC,
 	       sim_num_insn, &regs, mem);
 
   while (TRUE)
     {
-      /* maintain $r0 semantics */
+      // maintain $r0 semantics */
       regs.regs_R[MD_REG_ZERO] = 0;
 #ifdef TARGET_ALPHA
       regs.regs_F.d[MD_REG_ZERO] = 0.0;
 #endif /* TARGET_ALPHA */
 
-      /* get the next instruction to execute */
+      // get the next instruction to execute
       if (itlb)
 	cache_access(itlb, Read, IACOMPRESS(regs.regs_PC),
 		     NULL, ISCOMPRESS(sizeof(md_inst_t)), 0, NULL, NULL);
@@ -1120,19 +1114,19 @@ sim_main(void)
 		     NULL, ISCOMPRESS(sizeof(md_inst_t)), 0, NULL, NULL);
       MD_FETCH_INST(inst, mem, regs.regs_PC);
 
-      /* keep an instruction count */
+      // keep an instruction count
       sim_num_insn++;
 
-      /* set default reference address and access mode */
+      // set default reference address and access mode
       addr = 0; is_write = FALSE;
 
-      /* set default fault - none */
+      // set default fault - none
       fault = md_fault_none;
 
-      /* decode the instruction */
+      // decode the instruction
       MD_SET_OPCODE(op, inst);
 
-      /* execute the instruction */
+      // execute the instruction
       switch (op)
 	{
 #define DEFINST(OP,MSK,NAME,OPFORM,RES,FLAGS,O1,O2,I1,I2,I3)		\
@@ -1160,13 +1154,13 @@ sim_main(void)
 	    is_write = TRUE;
 	}
 
-      /* update any stats tracked by PC */
+      // update any stats tracked by PC
       for (i=0; i < pcstat_nelt; i++)
 	{
 	  counter_t newval;
 	  int delta;
 
-	  /* check if any tracked stats changed */
+	  // check if any tracked stats changed
 	  newval = STATVAL(pcstat_stats[i]);
 	  delta = newval - pcstat_lastvals[i];
 	  if (delta != 0)
@@ -1177,17 +1171,17 @@ sim_main(void)
 
 	}
 
-      /* check for DLite debugger entry condition */
+      // check for DLite debugger entry condition
       if (dlite_check_break(regs.regs_NPC,
 			    is_write ? ACCESS_WRITE : ACCESS_READ,
 			    addr, sim_num_insn, sim_num_insn))
 	dlite_main(regs.regs_PC, regs.regs_NPC, sim_num_insn, &regs, mem);
 
-      /* go to the next instruction */
+      // go to the next instruction
       regs.regs_PC = regs.regs_NPC;
       regs.regs_NPC += sizeof(md_inst_t);
 
-      /* finish early? */
+      // finish early?
       if (max_insts && sim_num_insn >= max_insts)
 	return;
     }

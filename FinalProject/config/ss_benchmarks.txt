@@ -1,4 +1,6 @@
-# name:binary-inside-traces-dir
+# Usage:
+# name file_location
+# ex: test-fmath traces/test-fmath
 
 test-fmath traces/test-fmath
 test-llong traces/test-llong

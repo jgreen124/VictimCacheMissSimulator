@@ -58,9 +58,7 @@ fi
 
 echo "Simulation complete. Parsing metrics (if available)..."
 
-# ----------------------------------------------
 # Basic stats
-# ----------------------------------------------
 IL1_MISS_RATE=$(grep -m1 "il1.miss_rate"      "${OUT_TXT}" 2>/dev/null | awk '{print $2}' || true)
 DL1_MISS_RATE=$(grep -m1 "dl1.miss_rate"      "${OUT_TXT}" 2>/dev/null | awk '{print $2}' || true)
 UL2_MISS_RATE=$(grep -m1 "ul2.miss_rate"      "${OUT_TXT}" 2>/dev/null | awk '{print $2}' || true)
@@ -72,9 +70,7 @@ SIM_CPI=$(grep -m1 "sim_CPI"                 "${OUT_TXT}" 2>/dev/null | awk '{pr
 UL2_D_ACCESSES=$(grep -m1 "ul2_d_accesses"   "${OUT_TXT}" 2>/dev/null | awk '{print $2}' || true)
 UL2_I_ACCESSES=$(grep -m1 "ul2_i_accesses"   "${OUT_TXT}" 2>/dev/null | awk '{print $2}' || true)
 
-# ----------------------------------------------
-# Initialize all optional counters to 0
-# ----------------------------------------------
+# Advanced stats, initialized to zero
 VC_LOOKUPS=0
 VC_HITS=0
 MC_LOOKUPS=0
@@ -83,9 +79,7 @@ SB_LOOKUPS=0
 SB_HITS=0
 SB_PREFETCHES=0
 
-# ----------------------------------------------
-# Mode-specific stats
-# ----------------------------------------------
+# Mode specific stats
 
 # Victim cache stats (victim-only or victim+stream)
 if [[ "${SS_MODE}" == "victim" || "${SS_MODE}" == "victim_stream" ]]; then
@@ -121,9 +115,7 @@ if [[ "${SS_MODE}" == "stream" || "${SS_MODE}" == "stream_multi" || \
 fi
 
 
-# ----------------------------------------------
-# Emit CSV
-# ----------------------------------------------
+# Output to CSV
 if [[ ! -f "${OUT_CSV}" ]]; then
   echo "benchmark,mode,il1_miss_rate,dl1_miss_rate,ul2_miss_rate,sim_num_insn,sim_elapsed_time,sim_CPI,vc_lookups,vc_hits,mc_lookups,mc_hits,sb_lookups,sb_hits,sb_prefetches,ul2_d_accesses,ul2_i_accesses" \
     > "${OUT_CSV}"

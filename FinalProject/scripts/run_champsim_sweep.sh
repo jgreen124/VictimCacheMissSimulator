@@ -5,7 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/../env.sh"
 
-# You probably have this set in env.sh:
 : "${CS_TRACE_LIST:=${CONFIG_DIR}/champsim_traces.txt}"
 
 if [[ ! -f "${CS_TRACE_LIST}" ]]; then

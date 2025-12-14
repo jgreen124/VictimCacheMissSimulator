@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-###############################################################################
 # Run ALL SimpleScalar cache experiments + parameter sweeps.
 #
 # Usage:
@@ -13,7 +12,6 @@ set -euo pipefail
 # Example:
 #   test-fmath traces/test-fmath
 #   test-math  traces/test-math
-###############################################################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -41,9 +39,7 @@ if [[ ${CLEAN} -eq 1 ]]; then
   rm -rf "${ROOT_DIR}/results/ss"
 fi
 
-###############################################################################
-# Sweep knobs (EDIT THESE)
-###############################################################################
+# Sweep parameters, are user configurable
 
 # Cache geometries to sweep.
 # Keep the config string format: name:nsets:bsize:assoc:repl
@@ -70,7 +66,7 @@ MC_ENTRIES_LIST=(2 4 8 16)
 VC_ENTRIES_LIST=(2 4 8 16)
 SB_DEPTH_LIST=(2 4 8 16)
 
-# Stream buffer fixed defaults (edit if needed)
+# Stream buffer fixed defaults
 SB_COUNT_DEFAULT=1
 SB_DEGREE_DEFAULT=1
 
@@ -79,9 +75,7 @@ VC_FIXED=4
 MC_FIXED=4
 SB_FIXED_DEPTH=4
 
-###############################################################################
 # Helpers
-###############################################################################
 
 # Resolve program path:
 # - if path is absolute, keep it
@@ -133,7 +127,7 @@ run_benchmarks() {
   done < "${BENCH_LIST}"
 }
 
-# One “experiment point”: choose caches + mode + knobs, set RUN_TAG, source env.sh, run.
+# One “experiment point”: choose caches + mode + parameters, set RUN_TAG, source env.sh, run.
 run_point() {
   local mode="$1"
   local dl1="$2"
@@ -149,14 +143,14 @@ run_point() {
   # RUN_TAG influences env.sh result directories
   export RUN_TAG="${tag}"
 
-  # Set knobs deterministically. If caller unset them, these defaults apply.
+  # Set parameters deterministically. If caller unset them, these defaults apply.
   export SS_VC_ENTRIES="${SS_VC_ENTRIES:-${VC_FIXED}}"
   export SS_MC_ENTRIES="${SS_MC_ENTRIES:-${MC_FIXED}}"
   export SS_SB_COUNT="${SS_SB_COUNT:-${SB_COUNT_DEFAULT}}"
   export SS_SB_DEPTH="${SS_SB_DEPTH:-${SB_FIXED_DEPTH}}"
   export SS_SB_DEGREE="${SS_SB_DEGREE:-${SB_DEGREE_DEFAULT}}"
 
-  # Load env + mode->enable mapping
+  # Load env + mode for enable mapping
   # shellcheck source=/dev/null
   source "${ROOT_DIR}/env.sh"
 
@@ -175,24 +169,18 @@ run_point() {
   run_benchmarks
 }
 
-###############################################################################
-# Main sweep plan
-###############################################################################
+# Main sweep: run all combinations for benchmarks
 
 for dl1 in "${DL1_CONFIGS[@]}"; do
   for ul2 in "${UL2_CONFIGS[@]}"; do
 
-    # -------------------------
-    # baseline
-    # -------------------------
+    # Baseline
     (
       unset SS_VC_ENTRIES SS_MC_ENTRIES SS_SB_DEPTH SS_SB_COUNT SS_SB_DEGREE
       run_point "baseline" "${dl1}" "${ul2}" "baseline__${dl1}__${ul2}"
     )
 
-    # -------------------------
-    # miss: sweep miss entries
-    # -------------------------
+    # Miss
     for mc in "${MC_ENTRIES_LIST[@]}"; do
       (
         export SS_MC_ENTRIES="${mc}"
@@ -201,9 +189,7 @@ for dl1 in "${DL1_CONFIGS[@]}"; do
       )
     done
 
-    # -------------------------
-    # victim: sweep victim entries
-    # -------------------------
+    # Victim
     for vc in "${VC_ENTRIES_LIST[@]}"; do
       (
         export SS_VC_ENTRIES="${vc}"
@@ -212,9 +198,7 @@ for dl1 in "${DL1_CONFIGS[@]}"; do
       )
     done
 
-    # -------------------------
-    # stream: sweep stream depth
-    # -------------------------
+    # Stream
     for depth in "${SB_DEPTH_LIST[@]}"; do
       (
         export SS_SB_DEPTH="${depth}"
@@ -225,12 +209,7 @@ for dl1 in "${DL1_CONFIGS[@]}"; do
       )
     done
 
-    # -------------------------
-    # victim_stream:
-    #   A) vary victim only (stream fixed)
-    #   B) vary stream only (victim fixed)
-    #   C) vary both
-    # -------------------------
+    # Victim_Stream: varies once with victim, and once with stream, and once with both
 
     # A) victim only
     for vc in "${VC_ENTRIES_LIST[@]}"; do
@@ -270,12 +249,7 @@ for dl1 in "${DL1_CONFIGS[@]}"; do
       done
     done
 
-    # -------------------------
-    # miss_stream:
-    #   A) vary miss only (stream fixed)
-    #   B) vary stream only (miss fixed)
-    #   C) vary both
-    # -------------------------
+    # Miss_Stream: varies once with miss, and once with stream, and once with both
 
     # A) miss only
     for mc in "${MC_ENTRIES_LIST[@]}"; do

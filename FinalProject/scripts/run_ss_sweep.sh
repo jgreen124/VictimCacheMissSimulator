@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# No -e; we want to attempt all benchmarks
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,6 +1,6 @@
 # Simulation Environment Documentation
 
-This document explains the simulation environment for the project, including directory structure, configuration systems, automation scripts, and results handling
+This document explains the simulation environment for the project, including directory structure, configuration systems, automation scripts, run tagging, and results handling.
 
 ## 1. Overview
 
@@ -24,6 +24,7 @@ Project/
     ChampSim/
     docs/
 ```
+All experiments are executed through shells scripts that source `env.sh` for a consistent runtime environment
 
 ### Key components:
 - `env.sh` - Sources environment
@@ -39,9 +40,12 @@ The environment allows for run tagging to track simulations and runs.
 
 Usage:
 ```bash
-RUN_TAG=baseline
+export RUN_TAG=baseline
 source env.sh
 ```
+
+**All autojmation scripts assume `env.sh` has already been sourced and rely on `RUN_TAG` to determine output directories.**
+
 This will automatically set
 ```
 SS_RESULTS = results/ss/baseline
@@ -63,11 +67,13 @@ export SS_UL2_CONFIG="ul2:262144:64:4:l"
 
 ### 4.2: SimpleScalar Benchmarks - `ss_benchmarks.txt`
 ```
-test-fmath:test-fmath
-test-llong:test-llong
-test-lswlr:test-lswlr
-test-math:test-math
+test-fmath traces/test-fmath
+test-llong traces/test-llong
+test-lswlr traces/test-lswlr
+test-math  traces/test-math
 ```
+
+Each line specifies a benchmark name followed by the executable path relative to the project root.
 
 ### 4.3: ChampSim Runtime Settings - `champsim_run.sh`
 ```bash
@@ -89,7 +95,9 @@ To change a workload, only these files need to be edited. The scripts themselves
 
 ### SimpleScalar
 - `run_ss_cache.sh` - run a single benchmark
-- `run_ss_sweep.sh` - run all benchmarks in config list
+- `run_ss_sweep.sh` – runs all SimpleScalar benchmarks listed in `ss_benchmarks.txt` using the cache configuration and experiment mode defined by the current environment.
+
+**All sweep scripts assume the environment has been initialized via `source env.sh`
 
 Outputs:
 - per-benchmark logs
@@ -117,11 +125,25 @@ results/
     victim/
 ```
 
+Each subdirectory corresponds to a unique `RUN_TAG` and may contain multiple CSV files, one per cache mechanism or experiment mode.
+
 ## 7. Using the Environment
 
-Example usage:
+Example:
 ```
-RUN_TAG=example_tag source env.sh
+export RUN_TAG=example_tag
+source env.sh
 ss_sweep
 cs_sweep
 ```
+
+The `ss_sweep` command is typically an alias or wrapper script that invokes `run_ss_sweep.sh`
+
+## Notes on Reproducibility
+
+All experiments are fully reproducible by recording:
+- The `RUN_TAG`
+- Cache configuration files under `config/`
+- The automation script used to launch the experiment
+
+No simulator source code changes are required to reproduce results once the environment is configured.
