@@ -157,3 +157,8 @@ If normalization is wanted:
 ```python
 python3 scripts/normalize_data.py
 ```
+
+Output:
+```
+results/ss/analysis/ss_normalized.csv
+```
