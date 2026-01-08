@@ -1,6 +1,6 @@
 # Computer Architecture Final Project
 ### Evaluating Cache-Miss Reduction Techniques
-** Joshua Green and Akhil Sankar 
+**Joshua Green and Akhil Sankar** 
 
 ## 1. Project Overview
 
